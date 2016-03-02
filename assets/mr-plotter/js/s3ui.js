@@ -10,6 +10,7 @@ function MrPlotter(container, storagekey, backend, options, cb1, cb2) {
     this.data = [options, cb1, cb2];
     
     this.requester = new Requester(this, backend);
+    this.cache = new Cache(this.requester)
 }
 
 // Meteor provided these two functions on a template, to search inside of it

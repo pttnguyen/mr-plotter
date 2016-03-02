@@ -170,6 +170,18 @@ function cmpTimes(t1, t2) {
     }
 }
 
+function cmpListTime(lst, t) {
+    var pastStart = cmpTimes(t, lst[0]);
+    var pastEnd = cmpTimes(t, lst[lst.length - 1]);
+    if (pastStart >= 0 && pastEnd <= 0) {
+        return 0;
+    } else if (pastStart < 0) {
+        return 1;
+    } else {
+        return -1;
+    }
+}
+
 function timeToStr(time) {
     if (time[0] == 0) {
         return time[1].toString();
@@ -244,6 +256,7 @@ s3ui.binSearch = binSearch;
 s3ui.binSearchCmp = binSearchCmp;
 s3ui.nanosToUnit = nanosToUnit;
 s3ui.cmpTimes = cmpTimes;
+s3ui.cmpListTime = cmpListTime;
 s3ui.timeToStr = timeToStr;
 s3ui.escapeHTMLEntities = escapeHTMLEntities;
 s3ui.getTimezoneOffsetMinutes = getTimezoneOffsetMinutes;

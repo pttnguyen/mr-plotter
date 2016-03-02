@@ -158,7 +158,7 @@ function repaintZoomNewData(self, callback, stopCache, widthEstimate) {
             if (!self.idata.pollingBrackets && s3ui.shouldPollBrackets(self, stream.uuid, domain)) {
                 s3ui.startPollingBrackets(self);
             }
-            s3ui.limitMemory(self, selectedStreams, self.idata.oldOffsets, domain[0], domain[1], 300000 * selectedStreams.length, 150000 * selectedStreams.length);
+            self.cache.limitMemory(selectedStreams, self.idata.oldOffsets, [domain[0], 0], [domain[1], 0], 300000 * selectedStreams.length, 150000 * selectedStreams.length);
             if (data != undefined) {
                 self.idata.oldData[stream.uuid] = [stream, data, pwe, low, high];
             }
@@ -766,7 +766,7 @@ function drawYAxes(self, data, streams, streamSettings, startDate, endDate, xSca
     otherChange = false;
     
     var yAxes = self.idata.yAxes;
-    var i, j, k;
+    var i, j, k, m;
         
     // Find the minimum and maximum value in each stream to properly scale the axes
     var axisData = {}; // Maps axis ID to a 2-element array containing the minimum and maximum; later on a third element is added containing the y-Axis scale
@@ -795,29 +795,37 @@ function drawYAxes(self, data, streams, streamSettings, startDate, endDate, xSca
             axisData[axis.axisid] = [NaN, NaN, undefined, true]; // so we know that we're using a manual scale for this axis
             continue;
         }
-        totalmin = undefined;
-        totalmax = undefined;
         for (j = 0; j < numstreams; j++) {
             if (!data.hasOwnProperty(axis.streams[j].uuid)) {
                 continue;
             }
             streamdata = data[axis.streams[j].uuid][1];
-            startIndex = s3ui.binSearchCmp(streamdata, [startTime, 0], s3ui.cmpTimes);
-            if (startIndex < streamdata.length && s3ui.cmpTimes(streamdata[startIndex], [startTime, 0]) < 0) {
+            var startT = [startTime, 0];
+            k = s3ui.binSearchCmp(streamdata, startT, s3ui.cmpListTime);
+            if (k < streamdata.length - 1 && s3ui.cmpListTime(streamdata[k], startT) < 0) {
+                k++;
+            }
+            startIndex = s3ui.binSearchCmp(streamdata[k], startT, s3ui.cmpTimes);
+            if (startIndex < streamdata[k].length - 1 && s3ui.cmpTimes(streamdata[k][startIndex], startT) < 0) {
                 startIndex++; // make sure we only look at data in the specified range
             }
-            endIndex = s3ui.binSearchCmp(streamdata, [endTime, 0], s3ui.cmpTimes);
-            if (endIndex < streamdata.length && s3ui.cmpTimes(streamdata[endIndex], endTime)) {
+            var endT = [endTime, 0];
+            k = s3ui.binSearchCmp(streamdata, endT, s3ui.cmpListTime);
+            if (k > 0 && s3ui.cmpListTime(streamdata[k], endT) > 0) {
+                k--;
+            }
+            endIndex = s3ui.binSearchCmp(streamdata, endT, s3ui.cmpTimes);
+            if (endIndex > 0 && s3ui.cmpTimes(streamdata[endIndex], endT)) {
                 endIndex--; // make sure we only look at data in the specified range
             }
-            for (k = startIndex; k < endIndex; k++) {
-                datapointmin = streamdata[k][2];
-                datapointmax = streamdata[k][4];
-                if (!(totalmin <= datapointmin)) {
-                    totalmin = datapointmin;
-                }
-                if (!(totalmax >= datapointmax)) {
-                    totalmax = datapointmax;
+            for (k = 0; k < streamdata.length; k++) {
+                for (m = 0; m < streamdata[k].length; m++) {
+                    if (!(streamdata[k][m][2] >= totalmin)) {
+                        totalmin = streamdata[k][m][2];
+                    }
+                    if (!(streamdata[k][m][4] <= totalmax)) {
+                        totalmax = streamdata[k][m][4];
+                    }
                 }
             }
         }
@@ -1006,7 +1014,7 @@ function drawStreams (self, data, streams, streamSettings, xScale, yScales, yAxi
     var minval, mean, maxval;
     var subsetdata;
     var scaledX;
-    var startIndex;
+    var startIndex, startK;
     var domain = xScale.domain();
     var startTime, endTime;
     var xPixel;
@@ -1024,7 +1032,7 @@ function drawStreams (self, data, streams, streamSettings, xScale, yScales, yAxi
     var currLineChunk;
     var pw;
     var dataObj;
-    var j;
+    var j, k;
     var continueLoop;
 
     for (var i = 0; i < streams.length; i++) {
@@ -1041,30 +1049,48 @@ function drawStreams (self, data, streams, streamSettings, xScale, yScales, yAxi
         yScale = axisData[streamSettings[streams[i].uuid].axisid][2];
         startTime = domain[0].getTime() - offset;
         endTime = domain[1].getTime() - offset;
-        startIndex = s3ui.binSearchCmp(streamdata, [startTime, 0], s3ui.cmpTimes);
-        if (startIndex > 0 && s3ui.cmpTimes(streamdata[startIndex], [startTime, 0]) > 0) {
-            startIndex--; // make sure to plot an extra data point at the beginning
+        var startT = [startTime, 0];
+        if (streamdata.length == 0) {
+            startK = 0;
+            startIndex = 0;
+        } else {
+            startK = s3ui.binSearchCmp(streamdata, startT, s3ui.cmpListTime);
+            if (startK > 0 && s3ui.cmpListTime(streamdata[startK], startT) > 0) {
+                startK--; // make sure to plot an extra data point at the beginning
+            }
+            startIndex = s3ui.binSearchCmp(streamdata[startK], startT, s3ui.cmpTimes);
+            if (startIndex > 0 && s3ui.cmpTimes(streamdata[startK][startIndex], startT) > 0) {
+                startIndex--; // make sure to plot an extra data point at the beginning
+            }
         }
         outOfRange = true;
         continueLoop = true; // used to get one datapoint past the end
-        for (j = startIndex; j < streamdata.length && continueLoop; j++) {
-            continueLoop = (xPixel = xScale((currpt = streamdata[j])[0] + offset)) < WIDTH;
-            prevpt = streamdata[j - 1];
-            if (currLineChunk[0].length > 0 && (j == startIndex || (currpt[0] - prevpt[0]) * 1000000 + (currpt[1] - prevpt[1]) > pw)) {
-                processLineChunk(currLineChunk, lineChunks, points);
-                currLineChunk = [[], [], []];
+        var streamdata2 = streamdata;
+        j = startIndex;
+        for (k = startK; k < streamdata.length && continueLoop; k++) {
+            streamdata = streamdata[k];
+            for (; j < streamdata.length && continueLoop; j++) {
+                continueLoop = (xPixel = xScale((currpt = streamdata[j])[0] + offset)) < WIDTH;
+                if (currLineChunk[0].length > 0 && ((k == startK && j == startIndex) || (currpt[0] - prevpt[0]) * 1000000 + (currpt[1] - prevpt[1]) > pw)) {
+                    processLineChunk(currLineChunk, lineChunks, points);
+                    currLineChunk = [[], [], []];
+                }
+                // correct for nanoseconds
+                xPixel += (currpt[1] / pixelw);
+                mint = Math.min(Math.max(yScale(currpt[2]), -2000000), 2000000);
+                currLineChunk[0].push(xPixel + "," + mint);
+                currLineChunk[1].push(xPixel + "," + Math.min(Math.max(yScale(currpt[3]), -2000000), 2000000));
+                maxt = Math.min(Math.max(yScale(currpt[4]), -2000000), 2000000);
+                currLineChunk[2].push(xPixel + "," + maxt);
+                outOfRange = outOfRange && (mint < 0 || mint > HEIGHT) && (maxt < 0 || maxt > HEIGHT) && (mint < HEIGHT || maxt > 0);
+                prevpt = streamdata[j];
             }
-            // correct for nanoseconds
-            xPixel += (currpt[1] / pixelw);
-            mint = Math.min(Math.max(yScale(currpt[2]), -2000000), 2000000);
-            currLineChunk[0].push(xPixel + "," + mint);
-            currLineChunk[1].push(xPixel + "," + Math.min(Math.max(yScale(currpt[3]), -2000000), 2000000));
-            maxt = Math.min(Math.max(yScale(currpt[4]), -2000000), 2000000);
-            currLineChunk[2].push(xPixel + "," + maxt);
-            outOfRange = outOfRange && (mint < 0 || mint > HEIGHT) && (maxt < 0 || maxt > HEIGHT) && (mint < HEIGHT || maxt > 0);
+            j = 0;
+            streamdata = streamdata2;
         }
+        streamdata = streamdata2;
         processLineChunk(currLineChunk, lineChunks, points);
-        if ((lineChunks.length == 1 && lineChunks[0][0].length == 0) || streamdata[startIndex][0] > endTime || streamdata[j - 1][0] < startTime) {
+        if ((lineChunks.length == 1 && lineChunks[0][0].length == 0) || streamdata[startK][startIndex][0] > endTime || prevpt[0] < startTime) {
             s3ui.setStreamMessage(self, streams[i].uuid, "No data in specified time range", 3);
         } else {
             s3ui.setStreamMessage(self, streams[i].uuid, undefined, 3);
@@ -1216,62 +1242,78 @@ function showDataDensity(self, uuid) {
     var prevpt;
     var oldXScale = self.idata.oldXScale;
     if (streamdata.length > 0) {    
-        var i;
-        startIndex = s3ui.binSearchCmp(streamdata, [startTime, 0], s3ui.cmpTimes);
-        if (startIndex < streamdata.length && s3ui.cmpTimes(streamdata[startIndex], [startTime, 0]) < 0) {
-            startIndex++;
+        var i, k;
+        var startT = [startTime, 0];
+        if (streamdata.length == 0) {
+            k = 0;
+            startIndex = 0;
+        } else {
+            k = s3ui.binSearchCmp(streamdata, startT, s3ui.cmpListTime);
+            if (k > 0 && s3ui.cmpListTime(streamdata[k], startT) > 0) {
+                k--; // get the data point before
+            }
+            startIndex = s3ui.binSearchCmp(streamdata[k], startT, s3ui.cmpTimes);
+            if (startIndex > 0 && s3ui.cmpTimes(streamdata[k][startIndex], startT) > 0) {
+                startIndex--; // also include the previous data point
+            }
         }
-        if (startIndex >= streamdata.length) {
-            startIndex = streamdata.length - 1;
-        }
-        totalmax = streamdata[startIndex][5];
+        totalmax = streamdata[k][startIndex][5];
         lastiteration = false;
-        for (i = startIndex; i < streamdata.length; i++) {
-            xPixel = oldXScale(streamdata[i][0] + offset);
-            xPixel += ((streamdata[i][1] - pw/2) / pixelw);
-            if (xPixel < 0) {
-                xPixel = 0;
-            }
-            if (xPixel > WIDTH) {
-                xPixel = WIDTH;
-                lastiteration = true;
-            }
-            if (i == 0) {
-                prevpt = [self.idata.oldData[uuid][3], 0, 0, 0, 0, 0];
-            } else {
-                prevpt = streamdata[i - 1];
-            }
-            if (((streamdata[i][0] - prevpt[0]) * 1000000) + streamdata[i][1] - prevpt[1] <= pw) {
-                if (i != 0) { // if this is the first point in the cache entry, then the cache start is less than a pointwidth away and don't drop it to zero
-                    if (i == startIndex) {
-                        toDraw.push([Math.max(0, Math.min(WIDTH, oldXScale(prevpt[0] + offset))), prevpt[5]]);
+        var streamdata2 = streamdata;
+        var prevpt = [self.idata.oldData[uuid][3], 0, 0, 0, 0, 0];
+        i = startIndex;
+      outerloop:
+        for (; k < streamdata.length; k++) {
+            streamdata = streamdata[k];
+            for (; i < streamdata.length; i++) {
+                xPixel = oldXScale(streamdata[i][0] + offset);
+                xPixel += ((streamdata[i][1] - pw/2) / pixelw);
+                if (xPixel < 0) {
+                    xPixel = 0;
+                }
+                if (xPixel > WIDTH) {
+                    xPixel = WIDTH;
+                    lastiteration = true;
+                }
+                if (((streamdata[i][0] - prevpt[0]) * 1000000) + streamdata[i][1] - prevpt[1] <= pw) {
+                    if (i != 0) { // if this is the first point in the cache entry, then the cache start is less than a pointwidth away and don't drop it to zero
+                        if (i == startIndex) {
+                            toDraw.push([Math.max(0, Math.min(WIDTH, oldXScale(prevpt[0] + offset))), prevpt[5]]);
+                        }
+                        toDraw.push([xPixel, toDraw[toDraw.length - 1][1]]);
                     }
-                    toDraw.push([xPixel, toDraw[toDraw.length - 1][1]]);
+                } else {
+                    prevIntervalEnd = Math.max(0, Math.min(WIDTH, (oldXScale(prevpt[0] + offset) + ((prevpt[1] + (pw/2)) / pixelw)))); // x pixel of end of previous interval
+                    if (prevIntervalEnd != 0) {
+                        toDraw.push([prevIntervalEnd, prevpt[5]]);
+                    }
+                    toDraw.push([prevIntervalEnd, 0]);
+                    toDraw.push([xPixel, 0]);
                 }
-            } else {
-                prevIntervalEnd = Math.max(0, Math.min(WIDTH, (oldXScale(prevpt[0] + offset) + ((prevpt[1] + (pw/2)) / pixelw)))); // x pixel of end of previous interval
-                if (prevIntervalEnd != 0) {
-                    toDraw.push([prevIntervalEnd, prevpt[5]]);
+                if (!(streamdata[i][5] <= totalmax)) {
+                    totalmax = streamdata[i][5];
                 }
-                toDraw.push([prevIntervalEnd, 0]);
-                toDraw.push([xPixel, 0]);
+                if (lastiteration) {
+                    break outerloop;
+                } else {
+                    toDraw.push([xPixel, streamdata[i][5]]);
+                }
+                prevpt = streamdata[i];
             }
-            if (!(streamdata[i][5] <= totalmax)) {
-                totalmax = streamdata[i][5];
-            }
-            if (lastiteration) {
-                break;
-            } else {
-                toDraw.push([xPixel, streamdata[i][5]]);
-            }
+            i = 0;
+            streamdata = streamdata2;
         }
-        if (i == streamdata.length && (self.idata.oldData[uuid][4] - streamdata[i - 1][0]) * 1000000 - streamdata[i - 1][1] >= pw) {
-            // Force the plot to 0
-            toDraw.push([toDraw[toDraw.length - 1][0], 0]);
-            // Keep it at zero for the correct amount of time
-            var lastpixel = oldXScale(self.idata.oldData[uuid][4] + offset);
-            if (lastpixel > 0) {
-                toDraw.push([Math.min(lastpixel, WIDTH), 0]);
+        streamdata = streamdata2;
+        if (k == streamdata.length) {
+            var previend = streamdata[k - 1].length - 1;
+            if ((self.idata.oldData[uuid][4] - streamdata[k - 1][previend][0]) * 1000000 - streamdata[k - 1][previend][1] >= pw) {
+                // Force the plot to 0
+                toDraw.push([toDraw[toDraw.length - 1][0], 0]);
+                // Keep it at zero for the correct amount of time
+                var lastpixel = oldXScale(self.idata.oldData[uuid][4] + offset);
+                if (lastpixel > 0) {
+                    toDraw.push([Math.min(lastpixel, WIDTH), 0]);
+                }
             }
         }
     }

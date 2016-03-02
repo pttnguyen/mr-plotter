@@ -224,6 +224,16 @@ function validateContiguous(cacheEntry, pwe) {
    more calls for that stream will not result in a GET request (so this
    function doesn't fall behind user input). */
 function ensureData(self, uuid, pointwidthexp, startTime, endTime, callback, caching) {
+    return self.cache.getData(uuid, pointwidthexp, [startTime, 0], [endTime, 0], function (cacheEntry) {
+            if (cacheEntry == undefined) {
+                callback(undefined);
+            } else {
+                callback(cacheEntry.cached_data, cacheEntry.start_time[0], cacheEntry.end_time[0]);
+            }
+        }, caching);
+        
+    // SHOULD NEVER GET HERE TO DO ANYTHING ELSE.
+    
     pointwidthexp = Math.min(self.idata.pweHigh, pointwidthexp);
     var halfPWnanos = Math.pow(2, pointwidthexp - 1) - 1;
     var halfPWmillis = halfPWnanos / 1000000;
