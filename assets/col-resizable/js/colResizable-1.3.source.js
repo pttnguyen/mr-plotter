@@ -275,7 +275,7 @@
                 draggingClass: 'JCLRgripDrag',	//css-class used when a grip is being dragged (for visual feedback purposes)
 				gripInnerHtml: '',				//if it is required to use a custom grip it can be done using some custom HTML				
 				liveDrag: false,				//enables table-layout updaing while dragging			
-				minWidth: 15, 					//minimum width value in pixels allowed for a column 
+				minWidth: 220, 					//minimum width value in pixels allowed for a column 
 				headerOnly: false,				//specifies that the size of the the column resizing anchors will be bounded to the size of the first row 
 				hoverCursor: "e-resize",  		//cursor to be used on grip hover
 				dragCursor: "e-resize",  		//cursor to be used while dragging
