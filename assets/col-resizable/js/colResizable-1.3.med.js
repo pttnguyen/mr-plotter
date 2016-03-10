@@ -274,7 +274,7 @@
 				draggingClass : 'CRD',
 				gripInnerHtml : '',
 				liveDrag : F,
-				minWidth : 15,
+				minWidth : 220,
 				headerOnly : F,
 				hoverCursor : "e-resize",
 				dragCursor : "e-resize",
