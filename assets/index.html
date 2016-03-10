@@ -34,8 +34,8 @@
     <script src="mr-plotter/js/requester.js"></script>
     <script>
         $(function () {
-                mr_plotter(document.getElementById("plotter"), "mrplotter");
-            });
+                mr_plotter(document.body, "mrplotter");
+			});            
     </script>
 
 	<template id="mrplotter">
@@ -116,10 +116,7 @@
             <div class="navbar-collapse collapse">
             </div>
         </div>
-        
-        <div id="plotter">
-        </div>
-        
+
 
     <noscript>You must enable Javascript to interact with the plotting tool.</noscript>
     <style class="plotStyles">
@@ -355,55 +352,6 @@
 					
                     <div class="well">
                         <div class="row">
-                            <div class="col-md-4 metadataDisplay"></div>
-                            <div class="col-md-3">
-                                <!-- EXPORT TO CSV -->
-                                <div class="graphExport">
-                                    <div class="btn-group-vertical">
-                                        <div class="makecsv btn btn-default">Export Graph to CSV File</div>
-                                        <div class="makeGraph btn btn-default">Export Graph to SVG Image</div>
-                                    </div>
-                                    <div class="download-graph"></div>
-                                    <div class="modal fade csv-modal" role="dialog" tabindex="-1" aria-hidden="true">
-                                        <div class="modal-dialog">
-                                            <div class="modal-content">
-                                                <div class="modal-header">
-                                                    <div class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></div>
-                                                    <div class="csv-settings">
-                                                        <h4>1. Select the streams to include in the CSV file.</h4>
-                                                        <div class="csv-streams"></div>
-                                                        <h4>2. Select the resolution at which to get the data.</h4>
-                                                        <div class="csv-pointwidth">
-                                                            <input type="range" class="pointwidth-selector" min="0" max="62" />
-                                                            <div class="selected-pointwidth"></div>
-                                                            <div class="selected-pw-desc"></div>
-                                                        </div>
-                                                        <h4>3. Click the "Create CSV File" button to generate the CSV file.</h4>
-                                                        
-                                                        <!-- This form is not visible to the user, but is used to make the POST request for the CSV file. -->
-                                                        <form class="csv-form" method="post" style="display: none;" target="_blank" enctype="text/plain">
-                                                            <input class="csv-form-data" name="json" />
-                                                        </form>
-                                                    </div>
-                                                </div>
-                                                <div class="modal-footer">
-                                                    <div class="btn btn-default" data-dismiss="modal">Close</div>
-                                                    <div class="csv-button btn btn-primary">Create CSV File</div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-5">
-                                <!-- PERMALINK -->
-                                <div class="permalinkGenerate">
-                                    <div class="getPermalink btn btn-default">Generate Permalink</div>
-                                    <input type="checkbox" class="includeMetadata" />
-                                    <span>Embed Stream Metadata</span>
-                                    <div class="permalink"></div>
-                                </div>
-=======
 						
                             <div class="col-md-12">
                                 <h3 style='margin-top: 0px;'>Export</h3>
@@ -476,16 +424,6 @@
     </table>
 </template>
 
-<footer>
-            <div class="container" style="width: 100%;">
-                <p class="text-muted">
-                    The Multi-Resolution Plotter "Mr. Plotter"&nbsp;&nbsp;Copyright &copy; 2016 Sam Kumar, Michael Andersen, and the University of California, Berkeley.<br>
-                    This program comes with ABSOLUTELY NO WARRANTY.<br>
-                    This is free software and you are welcome to redistribute it under certain conditions. Click
-                    <a href="http://www.gnu.org/licenses/gpl-3.0.html" target="_blank">here</a> for details.
-                </p>
-            </div>
-        </footer>
 
 </body>
 </html>
