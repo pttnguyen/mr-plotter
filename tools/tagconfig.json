@@ -1,4 +1,5 @@
 {
-    "public": ["/upmu/soda_a/", "/upmu/soda_b", "/upmu/culler"],
-    "all": ["/"]
+    "public": ["/upmu/alameda_conference2", "/upmu/san_diego", "/upmu/seattle", "/upmu/psl_server"],
+    "all": ["/"],
+	"hidden": ["/upmu/alameda_conference1", "/upmu/opal_1", "/upmu/opal_2", "/upmu/culler"]
 }
